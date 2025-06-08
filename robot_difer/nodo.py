@@ -17,11 +17,14 @@ class BaseDriver(Node):
         port = self.get_parameter('port').get_parameter_value().string_value
         baud = self.get_parameter('baud').get_parameter_value().integer_value
         
+        self.ser = None
         try:
             self.ser = serial.Serial(port, baud, timeout=0.01)
-            self.get_logger().info(f"Puerto serial {port} abierto a {baud} baud.")
+            self.get_logger().info(
+                f"Puerto serial {port} abierto a {baud} baud.")
         except Exception as e:
-            self.get_logger().error(f"Error al abrir puerto serial: {e}")
+            self.get_logger().error(
+                f"Error al abrir puerto serial: {e}")
         
         # Publicador de odometría
         self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
@@ -64,10 +67,15 @@ class BaseDriver(Node):
         # Preparar el comando en el formato "pwm_left,pwm_right\n"
         command = f"{pwm_left},{pwm_right}\n"
         self.get_logger().info(f"Enviando comando: {command.strip()}")
-        self.ser.write(command.encode())
+        if self.ser and self.ser.is_open:
+            self.ser.write(command.encode())
+        else:
+            self.get_logger().warning("Puerto serial no disponible")
     
     def read_serial(self):
         try:
+            if not (self.ser and self.ser.is_open):
+                return
             # Leer una línea del puerto serial
             line = self.ser.readline().decode().strip()
             if line:
